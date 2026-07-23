@@ -43,34 +43,27 @@ pipeline {
             }
         }
 
-        stage('Backend: Install & Test') {
-            steps {
-                dir('backend') {
-                    script {
-                        if (isUnix()) {
-                            sh '''
-                                python3 -m venv .venv
-                                . .venv/bin/activate
-                                pip install --upgrade pip
-                                pip install -r requirements.txt
-                                pytest --junitxml=test-results.xml
-                            '''
-                        } else {
-                            bat '''
-                                python -m pip install --upgrade pip
-                                pip install -r requirements.txt
-                                pytest --junitxml=test-results.xml
-                            '''
-                        }
-                    }
-                }
-            }
-            post {
-                always {
-                    junit 'backend/test-results.xml'
+       stage('Backend: Install & Test') {
+    steps {
+        dir('backend') {
+            script {
+                if (isUnix()) {
+                    sh '''
+                        python3 -m pip install --upgrade pip
+                        python3 -m pip install -r requirements.txt
+                        python3 -m pytest --junitxml=test-results.xml
+                    '''
+                } else {
+                    bat '''
+                        py -m pip install --upgrade pip
+                        py -m pip install -r requirements.txt
+                        py -m pytest --junitxml=test-results.xml
+                    '''
                 }
             }
         }
+    }
+}
 
         stage('Frontend: Install & Build') {
             steps {
