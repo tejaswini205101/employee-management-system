@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import client from '../api/client'
-import MyAttendancePanel from '../components/MyAttendancePanel.jsx'
+
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
@@ -18,7 +18,7 @@ export default function Attendance() {
       </div>
 
       <MarkAttendancePanel />
-      <MyAttendancePanel />
+      
     </>
   )
 }
