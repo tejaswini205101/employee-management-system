@@ -25,8 +25,8 @@ export default function Dashboard() {
   }, [])
 
   const active = employees.filter((e) => e.status === 'active').length
-  const onLeave = employees.filter((e) => e.status === 'on_leave').length
   const payroll = employees.reduce((sum, e) => sum + (e.status !== 'terminated' ? e.salary : 0), 0)
+  const [todayAttendance, setTodayAttendance] = useState([])
 
   return (
     <>
