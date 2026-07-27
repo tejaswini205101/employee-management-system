@@ -2,21 +2,27 @@ import { useEffect, useState } from 'react'
 import client from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
+const todayStr = () => new Date().toISOString().slice(0, 10)
+
 export default function Dashboard() {
   const { user } = useAuth()
   const [employees, setEmployees] = useState([])
   const [departments, setDepartments] = useState([])
+  const [todayAttendance, setTodayAttendance] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const [empRes, deptRes] = await Promise.all([
+        const today = todayStr()
+        const [empRes, deptRes, attRes] = await Promise.all([
           client.get('/employees/', { params: { limit: 500 } }),
           client.get('/departments/'),
+          client.get('/attendance/', { params: { date_from: today, date_to: today } }),
         ])
         setEmployees(empRes.data)
         setDepartments(deptRes.data)
+        setTodayAttendance(attRes.data)
       } finally {
         setLoading(false)
       }
@@ -24,9 +30,9 @@ export default function Dashboard() {
     load()
   }, [])
 
-  const active = employees.filter((e) => e.status === 'active').length
   const payroll = employees.reduce((sum, e) => sum + (e.status !== 'terminated' ? e.salary : 0), 0)
-  const [todayAttendance, setTodayAttendance] = useState([])
+  const presentToday = todayAttendance.filter((a) => a.status === 'present').length
+  const onLeaveToday = todayAttendance.filter((a) => a.status === 'leave').length
 
   return (
     <>
@@ -44,12 +50,12 @@ export default function Dashboard() {
           <div className="stat-value">{loading ? '—' : employees.length}</div>
         </div>
         <div className="panel stat-card">
-          <div className="stat-label">Active</div>
-          <div className="stat-value">{loading ? '—' : active}</div>
+          <div className="stat-label">Present today</div>
+          <div className="stat-value">{loading ? '—' : presentToday}</div>
         </div>
         <div className="panel stat-card">
-          <div className="stat-label">On leave</div>
-          <div className="stat-value">{loading ? '—' : onLeave}</div>
+          <div className="stat-label">On leave today</div>
+          <div className="stat-value">{loading ? '—' : onLeaveToday}</div>
         </div>
         <div className="panel stat-card">
           <div className="stat-label">Monthly payroll</div>
