@@ -21,4 +21,6 @@ frontend/.env
 .DS_Store
 
 # Windows
-Thumbs.db
+Thumbs.dbemployee_management_backup.gz
+
+employee_management_backup.gz

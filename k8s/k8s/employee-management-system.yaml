@@ -1,0 +1,133 @@
+# ---------- Secrets (Mongo credentials + JWT secret) ----------
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ems-secrets
+type: Opaque
+stringData:
+  MONGO_ROOT_USER: root
+  MONGO_ROOT_PASSWORD: rootpassword
+  MONGO_URI: "mongodb://root:rootpassword@mongodb:27017/?authSource=admin"
+  JWT_SECRET_KEY: "change-this-to-a-long-random-string"
+---
+# ---------- ConfigMap (non-secret backend settings) ----------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ems-config
+data:
+  MONGO_DB_NAME: employee_management
+  CORS_ORIGINS: "http://localhost,http://localhost:5173"
+---
+# ---------- MongoDB: PVC + Deployment + Service ----------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mongodb }
+  template:
+    metadata:
+      labels: { app: mongodb }
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:7
+          ports: [{ containerPort: 27017 }]
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom: { secretKeyRef: { name: ems-secrets, key: MONGO_ROOT_USER } }
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: ems-secrets, key: MONGO_ROOT_PASSWORD } }
+          volumeMounts:
+            - name: mongo-storage
+              mountPath: /data/db
+      volumes:
+        - name: mongo-storage
+          persistentVolumeClaim: { claimName: mongo-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb   # must match this exact name — backend's MONGO_URI points here
+spec:
+  selector: { app: mongodb }
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+# ---------- Backend: Deployment + Service ----------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels: { app: backend }
+    spec:
+      containers:
+        - name: backend
+          image: tejaswini5643/ems-backend:latest
+          ports: [{ containerPort: 8000 }]
+          envFrom:
+            - configMapRef: { name: ems-config }
+          env:
+            - name: MONGO_URI
+              valueFrom: { secretKeyRef: { name: ems-secrets, key: MONGO_URI } }
+            - name: JWT_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: ems-secrets, key: JWT_SECRET_KEY } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend   # must match this exact name — nginx.conf proxies to "backend:8000"
+spec:
+  selector: { app: backend }
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+# ---------- Frontend: Deployment + Service (exposed externally) ----------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: frontend }
+  template:
+    metadata:
+      labels: { app: frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: tejaswini5643/ems-frontend:latest
+          ports: [{ containerPort: 80 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  type: NodePort
+  selector: { app: frontend }
+  ports:
+    - port: 80
+      targetPort: 80
